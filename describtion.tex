@@ -1,0 +1,68 @@
+\documentclass{article}
+\usepackage{amsmath}
+
+\begin{document}
+	
+	\title{Decentralized Portfolio Optimization with Primal Decomposition}
+	\author{Your Name}
+	\date{\today}
+	\maketitle
+	
+	\section*{Problem Description}
+	
+	Consider a decentralized portfolio optimization problem with $M$ investors and $N$ assets. Each investor aims to maximize their expected portfolio return while considering risk and a global objective related to the average return across all portfolios.
+	
+	The problem involves the following key components:
+	
+	\begin{itemize}
+		\item \textbf{Investors:} There are $M$ independent investors, each with its own risk profile, investment goals, and constraints.
+		\item \textbf{Assets:} There are $N$ financial assets available for investment.
+		\item \textbf{Global Objective:} The global objective is to optimize the overall portfolio performance, considering both individual investor objectives and a collective goal related to the average return.
+		\item \textbf{Local Decision Variables:} Each investor has a set of decision variables representing the weights assigned to different assets in their portfolio.
+		\item \textbf{Local Cost Functions:} The local cost functions for each investor incorporate their individual objectives, risk tolerance, and a coupling term with the global variable representing the average return.
+	\end{itemize}
+	
+	\section*{Problem Description: Local Cost Function Components}
+	
+	\subsection*{Expected Portfolio Return ($R_i(W_i)$)}
+	The expected portfolio return for investor $i$ is a linear combination of the weights assigned to different assets in their portfolio:
+	\[ R_i(W_i) = \sum_{j=1}^{N} W_{i,j} \cdot \text{Expected Return of Asset } j \]
+	
+	\subsection*{Portfolio Risk ($\sigma_i(W_i)$)}
+	The portfolio risk for investor $i$ is represented by the standard deviation of the portfolio return, considering the covariance between assets:
+	\[ \sigma_i(W_i) = \sqrt{\sum_{j=1}^{N} \sum_{k=1}^{N} W_{i,j} \cdot W_{i,k} \cdot \text{Covariance}(j, k)} \]
+	
+	\subsection*{Coupling Term ($|R_i(W_i) - \bar{R}|$)}
+	The coupling term represents the absolute difference between the expected portfolio return of investor $i$ and the average return across all portfolios:
+	\[ |R_i(W_i) - \bar{R}| = \left|R_i(W_i) - \frac{1}{M} \sum_{j=1}^{M} R_j(W_j)\right| \]
+	
+	\subsection*{Global Variable ($\bar{R}$)}
+	The global variable represents the average portfolio return across all investors and is updated iteratively:
+	\[ \bar{R} = \frac{1}{M} \sum_{i=1}^{M} R_i(W_i) \]
+	
+	\section*{Primal Decomposition Method}
+	
+	The primal decomposition method is employed to address the decentralized portfolio optimization problem. The key steps are as follows:
+	
+	\begin{enumerate}
+		\item \textbf{Decompose the Global Objective:} Express the global objective as the sum of individual local cost functions:
+		\[ J_{\text{Global}} = \sum_{i=1}^{M} J_i(W_i) \]
+		
+		\item \textbf{Decompose Individual Local Cost Functions:} Express each local cost function for investor $i$ as a combination of their local decision variables and a coupling term involving the global variable:
+		\[ J_i(W_i) = -R_i(W_i) + \lambda \cdot \sigma_i(W_i) + \alpha \cdot |R_i(W_i) - \bar{R}| \]
+		
+		\item \textbf{Optimize Locally:} Each investor independently optimizes their local cost function, focusing on their individual objectives and constraints.
+		
+		\item \textbf{Update Global Variable:} After each iteration, update the global variable (average return) based on individual portfolio returns:
+		\[ \bar{R} = \frac{1}{M} \sum_{i=1}^{M} R_i(W_i) \]
+		
+		\item \textbf{Calculate Coupling Term:} Calculate the coupling term in each local cost function using the updated global variable.
+		
+		\item \textbf{Minimize Local Cost Functions with Respect to Global Variable:} Theoretical calculation to minimize each local cost function with respect to the global variable, ensuring alignment with the collective objective.
+		
+		\item \textbf{Repeat:} Iterate the process until convergence, allowing each investor to refine their portfolio allocation while considering the global performance.
+	\end{enumerate}
+	
+	The primal decomposition method allows for a decentralized optimization approach, where each investor independently optimizes their portfolio based on their preferences, while the algorithm ensures coordination through the coupling term and global variable updates.
+	
+\end{document}
