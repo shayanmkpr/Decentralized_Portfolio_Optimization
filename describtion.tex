@@ -1,11 +1,16 @@
 \documentclass{article}
+\usepackage{amsmath,amsfonts}
+\usepackage{graphicx}
 \usepackage{amsmath}
+
+
 
 \begin{document}
 	
 	\title{Decentralized Portfolio Optimization}
-	\author{Shayan Malekpour}
-	\date{\today}
+	\author{Shayan Malekpour 	810197661}
+
+	\date{December 2023}
 	\maketitle
 	
 	\section*{Problem Description}
@@ -22,7 +27,27 @@
 		\item \textbf{Local Cost Functions:} The local cost functions for each investor incorporate their individual objectives, risk tolerance, and a coupling term with the global variable representing the average return.
 	\end{itemize}
 	
-	\section*{Problem Description: Local Cost Function Components}
+		\section*{Centralized Portfolio Optimization Problem}
+	Let:
+	\begin{itemize}
+		\item let $W \in \mathbb{R}^{N \times M}$ be the matrix of decision variables representing the portfolio weights, where $W_{ij}$ is the weight of asset $i$ in the portfolio of investor $j$.
+		\item $R \in \mathbb{R}^{M \times N}$ be the matrix of simulated returns, where $R_{ij}$ is the return of asset $i$ for investor $j$.
+		\item $\Sigma \in \mathbb{R}^{M \times N}$ be the matrix of simulated standard deviations (sigmas), where $\Sigma_{ij}$ is the standard deviation of asset $i$ for investor $j$.
+		\item $\alpha$ be an adjustable parameter.
+	\end{itemize}
+	
+	The centralized portfolio optimization problem can be formulated as follows:
+	
+	\begin{align*}
+		& \quad \sum_{i=1}^{M} \left( -R_i^T W_i + 0.1 \sum_{j=1}^{N} W_{ij} \Sigma_{ij} W_{ij} + \alpha \sum_{j=1}^{N} \left| R_{ij}^T W_{ij} - \frac{1}{M} \sum_{k=1}^{M} R_{kj}^T W_{kj} \right| \right) \\
+		& \text{Subject to:} \quad \sum_{i=1}^{N} W_{ij} = 1 \quad \text{for } j = 1, 2, \ldots, M \\
+		& \quad W \succeq 0 \quad \text{(element-wise non-negativity)}
+	\end{align*}
+	
+	In this formulation, $R_i$ denotes the vector of returns for investor $i$, and $\Sigma_i$ denotes the vector of standard deviations for investor $i$. The objective function seeks to maximize the global objective, which incorporates the returns, sigmas, and a regularization term penalizing deviations from the average returns.
+	
+	
+	\section*{Decentralized Problem Description}
 	
 	\subsection*{Expected Portfolio Return ($R_i(W_i)$)}
 	The expected portfolio return for investor $i$ is a linear combination of the weights assigned to different assets in their portfolio:
@@ -62,7 +87,293 @@
 		
 		\item \textbf{Repeat:} Iterate the process until convergence, allowing each investor to refine their portfolio allocation while considering the global performance.
 	\end{enumerate}
+	\pagebreak
+	\subsection{Results}
 	
-	The primal decomposition method allows for a decentralized optimization approach, where each investor independently optimizes their portfolio based on their preferences, while the algorithm ensures coordination through the coupling term and global variable updates.
+		\begin{figure}[h]
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{primal.png}
+			\caption{5 agent investing in 100 assets.}
+		\end{minipage}
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{primal2}
+			\caption{25 agent investing in 100 assets}
+		\end{minipage}
+		\label{figt}
+	\end{figure}
+	Due to the Limitations of resource and computation power, and the larger scale of calculations needed for the $scipy-optimize$ the problem was not solvable for more than 25 investors in this section only.
+	\pagebreak
+	\section*{ADMM Algorithm for Decentralized Portfolio Optimization}
 	
+
+	
+	The Alternating Direction Method of Multipliers (ADMM) is applied to solve the decentralized portfolio optimization problem. The algorithm iteratively updates the local decision variables and a consensus variable, enforcing consensus among the investors.
+	
+	\subsection*{Problem Formulation}
+	
+	Consider the decentralized portfolio optimization problem with the following cost function for investor $i$:
+	
+	\[
+	\begin{aligned}
+		J_i(W_i) = -\sum_{j=1}^{N} W_{i,j} \cdot \text{Expected Return of Asset } j +
+	\end{aligned}
+	\]
+	\[
+	\begin{aligned}
+		0.1 \cdot \sqrt{\sum_{j=1}^{N} \sum_{k=1}^{N} W_{i,j} \cdot W_{i,k} \cdot \text{Covariance}(j, k)} + \alpha \cdot \left|R_i(W_i) - \bar{R}\right|
+	\end{aligned}
+	\]
+	
+	Where:
+	\begin{itemize}
+		\item $W_i$ is the vector of decision variables representing the portfolio weights for investor $i$.
+		\item The first term represents the expected portfolio return for investor $i$.
+		\item The second term represents the portfolio risk for investor $i$.
+		\item The third term is the coupling term involving the global variable $\bar{R}$, which is the average return across all portfolios.
+		\item $\alpha$ is a parameter controlling the impact of the coupling term.
+	\end{itemize}
+	
+	\subsection*{Steps}
+	
+	\subsubsection*{Step 1: Augmented Lagrangian Formulation}
+	
+	The augmented Lagrangian for the decentralized portfolio optimization problem is given by:
+	
+	\[
+	L_\rho(W, Z, U) = \sum_{i=1}^{M} J_i(W_i) + \frac{\rho}{2} \sum_{i=1}^{M} \|W_i - Z + U_i\|^2
+	\]
+	
+	Where:
+	\begin{itemize}
+		\item $Z$ is the consensus variable.
+		\item $U$ is the vector of dual variables (Lagrange multipliers).
+		\item $\rho$ is the penalty parameter.
+	\end{itemize}
+	
+	\subsubsection*{Step 2: ADMM Update Steps}
+	
+	\begin{itemize}
+		\item \textbf{Update $W_i$:}
+		\[
+		W_i^{k+1} = \arg\min_{W_i} \left(J_i(W_i) + \frac{\rho}{2} \|W_i - Z^k + U_i^k\|^2\right)
+		\]
+		
+		\item \textbf{Update $Z$:}
+		\[
+		Z^{k+1} = \frac{1}{M} \sum_{i=1}^{M} (W_i^{k+1} + U_i^k)
+		\]
+		
+		\item \textbf{Update $U_i$:}
+		\[
+		U_i^{k+1} = U_i^k + (W_i^{k+1} - Z^{k+1})
+		\]
+	\end{itemize}
+	
+	\subsubsection*{Step 3: Convergence Check}
+	
+	Check for convergence based on the primal and dual residuals:
+	
+	\[
+	r^k = \frac{1}{M} \sum_{i=1}^{M} \|W_i^{k+1} - Z^{k+1}\|, \quad s^k = \rho \|Z^{k+1} - Z^k\|
+	\]
+	
+	The algorithm converges when $\max(r^k, s^k) < \epsilon$ (where $\epsilon = \max(\epsilon_r, \epsilon_s)$).
+	
+	\subsubsection*{Step 4: Iterative Updates}
+	
+	Iterate the ADMM update steps until convergence is achieved:
+	
+	\[
+	\begin{aligned}
+		W_i^{k+1} & = \arg\min_{W_i} \left(J_i(W_i) + \frac{\rho}{2} \|W_i - Z^k + U_i^k\|^2\right) \\
+		Z^{k+1} & = \frac{1}{M} \sum_{i=1}^{M} (W_i^{k+1} + U_i^k) \\
+		U_i^{k+1} & = U_i^k + (W_i^{k+1} - Z^{k+1})
+	\end{aligned}
+	\]
+	
+	\subsubsection*{Step 5: Output}
+	
+	The solution $W_i^{k+1}$ represents the optimized portfolio weights for each investor.
+	
+	\subsection*{Notes}
+	
+	\begin{itemize}
+		\item Adjust the specific form of the local cost function $J_i(W_i)$ based on the characteristics of your portfolio optimization problem.
+		\item The choice of penalty parameter $\rho$ affects the convergence and solution accuracy. Experiment with different values.
+		\item Convergence tolerances $\epsilon_r$ and $\epsilon_s$ control the convergence criterion. Smaller values lead to stricter convergence criteria.
+	\end{itemize}
+	
+	
+	\subsection{Result}
+	
+	According to the parameters of the ADMM algorithm the convergence changes.
+	Following results are for the\\ $\rho = 1$ $\&$ $\alpha = 0.1$
+	
+	\begin{figure}[h]
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{ADMM.png}
+			\caption{Convergence of ADMM algorithm for 5 investors}
+		\end{minipage}
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{ADMM15}
+			\caption{Convergence of ADMM algorithm for 15 investors}
+		\end{minipage}
+		\label{figu}
+	\end{figure}
+	\begin{figure}[h]
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{ADMM25.png}
+			\caption{Convergence of ADMM algorithm for 25 investors}
+		\end{minipage}
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{ADMM50}
+			\caption{Convergence of ADMM algorithm for 50 investors}
+		\end{minipage}
+		\label{figv}
+	\end{figure}
+	
+	\begin{figure}
+		\centering
+		\includegraphics[width=0.6\linewidth]{weight}
+		\caption{Average distribution of portfolios}
+	\end{figure}	
+	
+	\pagebreak
+	
+	\section*{Fast ADMM Algorithm for Decentralized Portfolio Optimization}
+	
+
+	
+	The Fast Alternating Direction Method of Multipliers (Fast ADMM) is a modification of the standard ADMM algorithm designed to accelerate convergence. The key idea is to utilize variable splitting and apply specialized updating rules for improved efficiency.
+	
+	\subsection*{Variable Splitting}
+	
+	The Fast ADMM introduces variable splitting, creating auxiliary variables for some of the original variables. This allows for faster updates and improved convergence rates.
+	
+	Consider the decentralized portfolio optimization problem with variable splitting:
+	
+	\[
+	\begin{aligned}
+		J_i(W_i, P_i) & = -\sum_{j=1}^{N} W_{i,j} \cdot \text{Expected Return of Asset } j + \\
+		& \quad 0.1 \cdot \sqrt{\sum_{j=1}^{N} \sum_{k=1}^{N} W_{i,j} \cdot W_{i,k} \cdot \text{Covariance}(j, k)} + \alpha \cdot \left|R_i(W_i) - \bar{R}\right| + \\
+		& \quad \frac{\rho}{2} \sum_{j=1}^{N} (P_{i,j} - W_{i,j} + Z_{j} - U_{i,j})^2
+	\end{aligned}
+	\]
+	
+	Here, $P_i$ is the auxiliary variable associated with the portfolio weights $W_i$.
+	
+	\subsection*{Fast ADMM Update Steps}
+	
+	The Fast ADMM update steps involve specialized rules for updating the original variables and auxiliary variables efficiently.
+	
+	\begin{itemize}
+		\item \textbf{Update $W_i$ and $P_i$:}
+		\[
+		\begin{aligned}
+			W_i^{k+1} & = \arg\min_{W_i} J_i(W_i, P_i^k) \\
+			P_i^{k+1} & = \arg\min_{P_i} J_i(W_i^{k+1}, P_i)
+		\end{aligned}
+		\]
+		
+		\item \textbf{Update $Z$:}
+		\[
+		Z^{k+1} = \frac{1}{M} \sum_{i=1}^{M} (W_i^{k+1} + U_i^k)
+		\]
+		
+		\item \textbf{Update $U_i$:}
+		\[
+		U_i^{k+1} = U_i^k + (W_i^{k+1} - Z^{k+1})
+		\]
+	\end{itemize}
+	
+	\subsection*{Convergence Check}
+	
+	The convergence check remains the same as in the standard ADMM:
+	
+	\[
+	r^k = \frac{1}{M} \sum_{i=1}^{M} \|W_i^{k+1} - Z^{k+1}\|, \quad s^k = \rho \|Z^{k+1} - Z^k\|
+	\]
+	
+	The algorithm converges when $\max(r^k, s^k) < \epsilon$ (where $\epsilon = \max(\epsilon_r, \epsilon_s)$).
+	
+	\subsection*{Iterative Updates}
+	
+	Iterate the Fast ADMM update steps until convergence is achieved:
+	
+	\[
+	\begin{aligned}
+		W_i^{k+1} & = \arg\min_{W_i} J_i(W_i, P_i^k) \\
+		P_i^{k+1} & = \arg\min_{P_i} J_i(W_i^{k+1}, P_i) \\
+		Z^{k+1} & = \frac{1}{M} \sum_{i=1}^{M} (W_i^{k+1} + U_i^k) \\
+		U_i^{k+1} & = U_i^k + (W_i^{k+1} - Z^{k+1})
+	\end{aligned}
+	\]
+	\pagebreak
+	\subsection{Results}
+	
+	According to the parameters of the fast ADMM algorithm the convergence changes.
+	Following results are for the\\ $\rho = 0.2$ $\&$ $\alpha = 1.$
+			
+		\begin{figure}[h]
+			\begin{minipage}{0.49\linewidth}
+				\centering
+				\includegraphics[width=\linewidth, height=0.2\textheight]{fastADMM.png}
+				\caption{Convergence of fastADMM algorithm for 5 investors}
+			\end{minipage}
+			\begin{minipage}{0.49\linewidth}
+				\centering
+				\includegraphics[width=\linewidth, height=0.2\textheight]{fastADMM15.png}
+				\caption{Convergence of fastADMM algorithm for 15 investors}
+			\end{minipage}
+			\label{figx}
+		\end{figure}
+		\begin{figure}[h]
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{fastADMM25.png}
+			\caption{Convergence of fastADMM algorithm for 25 investors}
+		\end{minipage}
+		\begin{minipage}{0.49\linewidth}
+			\centering
+			\includegraphics[width=\linewidth, height=0.2\textheight]{fastADMM50}
+			\caption{Convergence of fastADMM algorithm for 50 investors}
+		\end{minipage}
+		\label{figy}
+	\end{figure}
+	
+	\section*{Conclusion}
+	
+	In this study, we explored decentralized portfolio optimization problems with a focus on addressing the challenges posed by multiple independent investors. Two different optimization approaches, Primal Decomposition Method and Alternating Direction Method of Multipliers (ADMM), were employed to find solutions for the decentralized problem. Additionally, a variant of ADMM, the Fast ADMM, was introduced to enhance convergence speed.
+	
+	\subsection*{Centralized Portfolio Optimization}
+	
+	The centralized portfolio optimization problem was formulated with the objective of maximizing the overall portfolio performance, considering both individual investor objectives and a collective goal related to the average return. The optimization problem involved decision variables representing the portfolio weights, simulated returns, simulated standard deviations, and an adjustable parameter.
+	
+	The objective function incorporated the returns, standard deviations, and a regularization term penalizing deviations from the average returns. Constraints were imposed to ensure that the sum of portfolio weights for each investor equaled 1 and that the weights were non-negative.
+	
+	\subsection*{Primal Decomposition Method}
+	
+	The Primal Decomposition Method decomposed the global objective into individual local cost functions for each investor. Each local cost function included terms related to the expected portfolio return, portfolio risk, and a coupling term involving the global variable (average return).
+	
+	The optimization process involved iterative updates where each investor independently optimized their local cost function, and the global variable (average return) was updated based on individual portfolio returns. Theoretical calculations were performed to minimize each local cost function with respect to the global variable, ensuring alignment with the collective objective.
+	
+	\subsection*{ADMM Algorithm}
+	
+	The ADMM algorithm was applied to solve the decentralized portfolio optimization problem. The algorithm iteratively updated local decision variables and a consensus variable, enforcing consensus among the investors. The decentralized problem was formulated with the cost function for each investor, considering expected portfolio return, portfolio risk, and a coupling term involving the global variable.
+	
+	The ADMM algorithm involved augmented Lagrangian formulation, variable splitting, and specialized updating rules for improved efficiency. The iterative update steps included optimizing local decision variables, updating the consensus variable, and adjusting dual variables.
+	
+	\subsection*{Fast ADMM Algorithm}
+	
+	The Fast ADMM algorithm, a modification of the standard ADMM, introduced variable splitting to accelerate convergence. It created auxiliary variables for some of the original variables, allowing for faster updates and improved convergence rates.
+	
+	The update steps for the Fast ADMM algorithm involved optimizing both original variables and auxiliary variables, updating the consensus variable, and adjusting dual variables. The convergence check remained similar to the standard ADMM.
+	
+		
 \end{document}
