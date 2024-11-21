@@ -1,44 +1,131 @@
 # Decentralized Portfolio Optimization
 
-This repository explores decentralized portfolio optimization problems and employs two optimization approaches: the Primal Decomposition Method and the Alternating Direction Method of Multipliers (ADMM). Additionally, a variant of ADMM, the Fast ADMM, is introduced for enhanced convergence speed.
+## Overview
+This repository implements a **Decentralized Portfolio Optimization** framework that solves for optimal portfolio allocations for multiple investors using mathematical optimization techniques, including the **Primal Decomposition Method**, **ADMM (Alternating Direction Method of Multipliers)**, and **Fast ADMM**. The repository includes code and documentation to simulate both centralized and decentralized approaches.
 
-## Centralized Portfolio Optimization
+---
 
-- **Objective:** Maximize overall portfolio performance considering individual and collective goals.
-- **Decision Variables:** Portfolio weights, simulated returns, simulated standard deviations, and an adjustable parameter.
-- **Constraints:** Ensure the sum of portfolio weights equals 1, and weights are non-negative.
+## Problem Description
+
+### Key Components
+- **Investors**: \( M \) independent investors, each with their own risk profile, investment goals, and constraints.
+- **Assets**: \( N \) financial assets available for investment.
+- **Local Variables**: Each investor allocates weights to assets in their portfolio (\( W_{ij} \)), such that:
+  - \( \sum_{i=1}^{N} W_{ij} = 1 \quad \forall j \)
+  - \( W \geq 0 \) (non-negativity constraint)
+- **Global Objective**: Optimize overall portfolio performance while balancing individual objectives and aligning with a global goal.
+
+---
+
+## Centralized Optimization Formulation
+
+The centralized objective function:
+
+\[
+\sum_{i=1}^M \left( -R_i^T W_i + 0.1 \sum_{j=1}^N W_{ij} \Sigma_{ij} W_{ij} + \alpha \sum_{j=1}^N \left| R_{ij}^T W_{ij} - \frac{1}{M} \sum_{k=1}^M R_{kj}^T W_{kj} \right| \right)
+\]
+
+### Notation
+- \( W \): Portfolio weights matrix (\( N \times M \))
+- \( R \): Simulated returns matrix (\( M \times N \))
+- \( \Sigma \): Simulated standard deviations matrix (\( M \times N \))
+- \( \alpha \): Coupling term coefficient
+
+### Constraints
+1. \( \sum_{i=1}^N W_{ij} = 1, \quad j = 1, 2, \ldots, M \)
+2. \( W \geq 0 \)
+
+---
+
+## Decentralized Problem
+
+### Expected Portfolio Return
+For investor \( i \):
+\[
+R_i(W_i) = \sum_{j=1}^N W_{ij} \cdot \text{Expected Return of Asset } j
+\]
+
+### Portfolio Risk
+\[
+\sigma_i(W_i) = \sqrt{\sum_{j=1}^N \sum_{k=1}^N W_{ij} W_{ik} \cdot \text{Covariance}(j, k)}
+\]
+
+### Coupling Term
+\[
+| R_i(W_i) - \bar{R} | = \left| R_i(W_i) - \frac{1}{M} \sum_{j=1}^M R_j(W_j) \right|
+\]
+
+---
 
 ## Primal Decomposition Method
 
-- Decompose the global objective into individual local cost functions for each investor.
-- Local cost functions include terms related to expected portfolio return, portfolio risk, and a coupling term involving the global variable.
-- Iterative updates: Each investor independently optimizes their local cost function.
+### Steps
+1. **Decompose Global Objective**:
+   \[
+   J_\text{Global} = \sum_{i=1}^M J_i(W_i)
+   \]
+2. **Optimize Locally**:
+   \[
+   J_i(W_i) = -R_i(W_i) + \lambda \cdot \sigma_i(W_i) + \alpha \cdot |R_i(W_i) - \bar{R}|
+   \]
+3. **Update Global Variable**:
+   \[
+   \bar{R} = \frac{1}{M} \sum_{i=1}^M R_i(W_i)
+   \]
 
-## ADMM Algorithm
+---
 
-- Formulate the decentralized problem with a cost function for each investor, considering expected portfolio return, portfolio risk, and a coupling term.
-- Use augmented Lagrangian formulation, variable splitting, and specialized updating rules for efficiency.
-- Iterative update steps include optimizing local decision variables, updating the consensus variable, and adjusting dual variables.
+## ADMM for Decentralized Portfolio Optimization
 
-## Fast ADMM Algorithm
+### Augmented Lagrangian Formulation
+\[
+L_\rho(W, Z, U) = \sum_{i=1}^M J_i(W_i) + \frac{\rho}{2} \sum_{i=1}^M \| W_i - Z + U_i \|^2
+\]
 
-- Modify the standard ADMM with variable splitting for accelerated convergence.
-- Introduce auxiliary variables for original variables.
-- Update steps include optimizing original and auxiliary variables, updating the consensus variable, and adjusting dual variables.
+Where:
+- \( Z \): Consensus variable
+- \( U \): Dual variable
+- \( \rho \): Penalty parameter
+
+### ADMM Steps
+1. **Update \( W_i \)**:
+   \[
+   W_i^{k+1} = \arg\min_{W_i} \left( J_i(W_i) + \frac{\rho}{2} \| W_i - Z^k + U_i^k \|^2 \right)
+   \]
+2. **Update \( Z \)**:
+   \[
+   Z^{k+1} = \frac{1}{M} \sum_{i=1}^M (W_i^{k+1} + U_i^k)
+   \]
+3. **Update \( U_i \)**:
+   \[
+   U_i^{k+1} = U_i^k + (W_i^{k+1} - Z^{k+1})
+   \]
+4. **Convergence Check**:
+   \[
+   r^k = \frac{1}{M} \sum_{i=1}^M \| W_i^{k+1} - Z^{k+1} \|, \quad s^k = \rho \| Z^{k+1} - Z^k \|
+   \]
+
+---
+
+## Fast ADMM
+
+Fast ADMM introduces variable splitting:
+\[
+J_i(W_i, P_i) = J_i(W_i) + \frac{\rho}{2} \sum_{j=1}^N (P_{ij} - W_{ij} + Z_j - U_{ij})^2
+\]
+
+### Fast ADMM Steps
+1. Update \( W_i \) and auxiliary variable \( P_i \):
+   \[
+   W_i^{k+1} = \arg\min_{W_i} J_i(W_i, P_i^k)
+   \]
+   \[
+   P_i^{k+1} = \arg\min_{P_i} J_i(W_i^{k+1}, P_i)
+   \]
+2. Update \( Z \) and \( U \) as in standard ADMM.
+
+---
 
 ## Results
-
-- Visualize convergence for different algorithms and varying numbers of investors.
-- Display the average distribution of portfolios.
-- Analyze the impact of parameters (e.g., α, ρ) on convergence.
-
-## Conclusion
-
-- Explore decentralized portfolio optimization with practical optimization methods.
-- Conduct a comparative analysis of Primal Decomposition, ADMM, and Fast ADMM.
-- Provide recommendations for adjusting algorithm parameters based on convergence and solution accuracy.
-
-**Note:**
-- Adjustments to local cost functions, penalty parameters, and convergence tolerances may be necessary based on specific problem characteristics.
-- Code examples and detailed implementation are available in the LaTeX document.
-- Visualizations provide insights into algorithm convergence and portfolio distributions.
+- Convergence behavior and portfolio distributions are analyzed for various parameter settings (\( \rho, \alpha \)).
+- The repository includes visualizations demonstrating convergence for up to 50 investors.
